@@ -31,4 +31,4 @@ Deployed via [Vercel](https://vercel.com). Push to `main` → auto-deploys.
 - YouTube: [@DuleMilo-c8s7r](https://youtube.com/@DuleMilo-c8s7r)
 - TikTok: [@dulemilo](https://tiktok.com/@dulemilo)
 - Ko-fi: [dulemilo](https://ko-fi.com/dulemilo)
-- Web: leanprogressiq.com
+- Web: https://lean-progress-iq.vercel.app/
