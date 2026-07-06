@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dusan@lean-progress-iq: ~ — Dušan Milosavljević</title>
+<meta name="description" content="Dušan Milosavljević — AI builder, creator of aura-code and aura-pulse. Interactive terminal portfolio. Type 'help' to start.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=JetBrains+Mono:wght@400;600&family=Fira+Code:wght@400;600&family=Space+Mono:wght@400;700&family=Ubuntu+Mono:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0704;
+    --bg-glow:#1a0f05;
+    --fg:#ffb454;
+    --bright:#ffd9a0;
+    --dim:#9c7440;
+    --faint:#5c4526;
+    --accent:#5fd7ff;
+    --accent-dim:#2f7f99;
+    --red:#ff7a5c;
+    --green:#b8e06a;
+    --sel:#3a2a12;
+    --glow-a:.28;
+    --font:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --fsize:15px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(ellipse 120% 90% at 50% 0%, var(--bg-glow) 0%, var(--bg) 60%);
+    color:var(--fg);
+    font-family:var(--font);
+    font-size:var(--fsize);
+    line-height:1.55;
+    overflow:hidden;
+    transition:background .3s,color .3s;
+  }
+  ::selection{background:var(--sel);color:var(--bright)}
+
+  #crt{position:relative;height:100dvh;display:flex;flex-direction:column;max-width:1100px;margin:0 auto}
+  #crt::before{content:"";position:fixed;inset:0;
+    background:repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,.13) 3px);
+    pointer-events:none;z-index:9;mix-blend-mode:multiply}
+  #crt::after{content:"";position:fixed;inset:0;
+    background:radial-gradient(ellipse 90% 85% at 50% 45%, transparent 55%, rgba(0,0,0,.5) 100%);
+    pointer-events:none;z-index:10}
+  body.light #crt::before,body.light #crt::after{display:none}
+
+  /* ---------- TOP BAR: brand · nav tabs · clock ---------- */
+  header{
+    display:flex;align-items:stretch;gap:0;
+    border-bottom:1px solid var(--faint);
+    flex-shrink:0;user-select:none;flex-wrap:wrap;
+  }
+  .brand{
+    margin-right:auto;
+    padding:10px 18px;font-weight:600;color:var(--bright);
+    border-right:1px solid var(--faint);white-space:nowrap;
+  }
+  nav{display:flex;flex-wrap:wrap}
+  nav button{
+    background:none;border:none;border-right:1px solid var(--faint);
+    color:var(--dim);font:inherit;padding:10px 16px;cursor:pointer;
+    transition:color .12s,background .12s;
+  }
+  nav button:hover,nav button:focus-visible{color:var(--bright);background:rgba(255,255,255,.03);outline:none}
+  nav button.hot{color:var(--accent)}
+  .clock{
+    padding:10px 18px;font-size:12.5px;color:var(--dim);border-left:1px solid var(--faint);
+    white-space:nowrap;align-self:center;
+  }
+
+  #screen{
+    flex:1;overflow-y:auto;padding:18px 18px 6px;
+    scrollbar-width:thin;scrollbar-color:var(--faint) transparent;
+    text-shadow:0 0 6px color-mix(in srgb, var(--fg) calc(var(--glow-a)*100%), transparent);
+  }
+  #screen::-webkit-scrollbar{width:8px}
+  #screen::-webkit-scrollbar-thumb{background:var(--faint);border-radius:4px}
+
+  .line{white-space:pre-wrap;word-break:break-word}
+  .out{color:var(--fg)}
+  .bright{color:var(--bright);font-weight:600}
+  .dim{color:var(--dim)}
+  .faint{color:var(--faint)}
+  .err{color:var(--red)}
+  .ok{color:var(--green)}
+  .cy{color:var(--accent);text-shadow:0 0 8px color-mix(in srgb, var(--accent) 35%, transparent)}
+  .cyd{color:var(--accent-dim)}
+  .it{font-style:italic}
+
+  a{color:var(--bright);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--dim)}
+  a:hover,a:focus-visible{color:var(--accent);text-decoration-color:var(--accent);outline:none}
+  .pulse-box a{color:var(--accent);text-decoration-color:var(--accent-dim)}
+
+  .cmd-link{
+    color:var(--bright);cursor:pointer;text-decoration:underline;
+    text-decoration-style:dotted;text-underline-offset:3px;
+    background:none;border:none;font:inherit;padding:0;
+  }
+  .cmd-link:hover,.cmd-link:focus-visible{color:var(--accent);outline:none}
+
+  .box{border:1px solid var(--faint);padding:12px 16px;margin:8px 0 4px;max-width:76ch}
+  .pulse-box{border-color:var(--accent-dim);box-shadow:0 0 18px color-mix(in srgb, var(--accent) 8%, transparent) inset}
+
+  .ps1{color:var(--dim);flex-shrink:0;user-select:none}
+  .ps1 b{color:var(--fg);font-weight:600}
+  .typed{color:var(--bright)}
+
+  #input-line{display:flex;align-items:baseline;padding:6px 18px 14px;flex-shrink:0;border-top:1px solid var(--faint)}
+  #cmd-input{
+    flex:1;background:transparent;border:none;outline:none;
+    color:var(--bright);font:inherit;caret-color:transparent;min-width:20px;
+    text-shadow:0 0 6px color-mix(in srgb, var(--fg) calc(var(--glow-a)*100%), transparent);
+  }
+  #cursor{
+    display:inline-block;width:.62em;height:1.15em;background:var(--fg);
+    vertical-align:text-bottom;box-shadow:0 0 8px var(--fg);
+    animation:blink 1.05s steps(1) infinite;margin-left:-2px;position:relative;top:2px;pointer-events:none;
+  }
+  @keyframes blink{50%{opacity:0}}
+
+  /* ---------- preferences panel ---------- */
+  .prefs{border:1px solid var(--faint);padding:14px 16px;margin:8px 0 4px;max-width:76ch}
+  .prefs h3{font-size:inherit;color:var(--bright);letter-spacing:.1em;margin:0 0 8px}
+  .swatches{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .swatch{
+    display:flex;align-items:center;gap:8px;
+    border:1px solid var(--faint);background:none;color:var(--dim);
+    font:inherit;font-size:12.5px;padding:5px 10px;cursor:pointer;border-radius:2px;
+    transition:border-color .12s,color .12s;
+  }
+  .swatch:hover,.swatch:focus-visible{color:var(--bright);border-color:var(--dim);outline:none}
+  .swatch.active{color:var(--bright);border-color:var(--accent)}
+  .swatch .sw{display:flex;border-radius:2px;overflow:hidden;width:34px;height:14px;flex-shrink:0}
+  .swatch .sw i{flex:1}
+  .fontbtn{font-size:13px}
+  .swatch small{color:var(--faint);font-size:11px}
+
+  .ascii{font-size:11px;line-height:1.2;color:var(--bright);text-shadow:0 0 10px color-mix(in srgb, var(--fg) 40%, transparent)}
+  @media(max-width:700px){
+    body{font-size:13.5px}
+    .ascii{font-size:7.5px}
+    .box,.prefs{padding:10px 12px}
+    #screen{padding:14px 12px 4px}
+    #input-line{padding:6px 12px 12px}
+    .brand{padding:8px 12px}
+    nav button{padding:8px 10px;font-size:12.5px}
+    .clock{display:none}
+  }
+  @media(prefers-reduced-motion:reduce){
+    #cursor{animation:none}
+    #crt::before{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="crt">
+  <header>
+    <span class="brand">lean progress iq</span>
+    <nav>
+      <button data-cmd="whoami">whoami</button>
+      <button data-cmd="projects">projects</button>
+      <button data-cmd="run aura-code">aura-code</button>
+      <button data-cmd="run aura-pulse" class="hot">aura-pulse</button>
+      <button data-cmd="experience">work</button>
+      <button data-cmd="contact">contact</button>
+      <button data-cmd="prefs">prefs</button>
+      <button data-cmd="help">help</button>
+    </nav>
+    <span class="clock" id="clock"></span>
+  </header>
+
+  <div id="screen" aria-live="polite"></div>
+
+  <div id="input-line">
+    <span class="ps1" id="ps1"><b>dusan</b>@lean-progress-iq:~$&nbsp;</span>
+    <input id="cmd-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Terminal command input">
+    <span id="cursor"></span>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const screen = document.getElementById('screen');
+const input  = document.getElementById('cmd-input');
+const PS1    = '<b>dusan</b>@lean-progress-iq:~$ ';
+
+/* ---------------- themes & fonts ---------------- */
+
+const THEMES = {
+  amber:     {label:'amber crt',   bg:'#0b0704', glow:'#1a0f05', fg:'#ffb454', bright:'#ffd9a0', dim:'#9c7440', faint:'#5c4526', accent:'#5fd7ff', accentDim:'#2f7f99', red:'#ff7a5c', green:'#b8e06a', sel:'#3a2a12', light:false},
+  phosphor:  {label:'green phosphor', bg:'#050a05', glow:'#0a140a', fg:'#7ee787', bright:'#c8ffd0', dim:'#4a8a52', faint:'#27462b', accent:'#ffb454', accentDim:'#9c7440', red:'#ff7a5c', green:'#7ee787', sel:'#153018', light:false},
+  matrix:    {label:'matrix',      bg:'#000000', glow:'#020a04', fg:'#00ff41', bright:'#a8ffbe', dim:'#00992a', faint:'#004d16', accent:'#ffffff', accentDim:'#7a7a7a', red:'#ff4d4d', green:'#00ff41', sel:'#003310', light:false},
+  tron:      {label:'tron grid',   bg:'#04070d', glow:'#081326', fg:'#6fd7ff', bright:'#d5f3ff', dim:'#3d7f9e', faint:'#1e3d4d', accent:'#ffb254', accentDim:'#99691f', red:'#ff6f5c', green:'#9ce87a', sel:'#0e2f42', light:false},
+  dracula:   {label:'dracula',     bg:'#191a24', glow:'#282a36', fg:'#f8f8f2', bright:'#ffffff', dim:'#9aa0c8', faint:'#44475a', accent:'#ff79c6', accentDim:'#a4487f', red:'#ff5555', green:'#50fa7b', sel:'#44475a', light:false},
+  nord:      {label:'nord',        bg:'#242933', glow:'#2e3440', fg:'#d8dee9', bright:'#eceff4', dim:'#7f8ca3', faint:'#434c5e', accent:'#88c0d0', accentDim:'#5a8391', red:'#bf616a', green:'#a3be8c', sel:'#434c5e', light:false},
+  gruvbox:   {label:'gruvbox',     bg:'#1d2021', glow:'#282828', fg:'#ebdbb2', bright:'#fbf1c7', dim:'#a89984', faint:'#504945', accent:'#fe8019', accentDim:'#a5561a', red:'#fb4934', green:'#b8bb26', sel:'#504945', light:false},
+  synthwave: {label:'synthwave',   bg:'#160d24', glow:'#241436', fg:'#ff7edb', bright:'#ffd9f5', dim:'#a4569a', faint:'#4d2b52', accent:'#36f9f6', accentDim:'#1f9391', red:'#ff5f5f', green:'#72f1b8', sel:'#3a1c4d', light:false},
+  ice:       {label:'ice blue',    bg:'#0a0c10', glow:'#10141c', fg:'#a9c7ff', bright:'#e6edf3', dim:'#5d7397', faint:'#2c3750', accent:'#79ffe1', accentDim:'#3d9985', red:'#ff7b72', green:'#7ee787', sel:'#1d2b45', light:false},
+  paper:     {label:'paper (light)', bg:'#f5f0e6', glow:'#efe7d8', fg:'#4a4034', bright:'#1f1a12', dim:'#8a7d6b', faint:'#d2c7b4', accent:'#0e7c7b', accentDim:'#5aa3a2', red:'#c0392b', green:'#4a7c2f', sel:'#e2d7c0', light:true}
+};
+
+const FONTS = {
+  plex:      {label:'IBM Plex Mono',  css:'"IBM Plex Mono",ui-monospace,monospace', size:'15px'},
+  jetbrains: {label:'JetBrains Mono', css:'"JetBrains Mono",ui-monospace,monospace', size:'14.5px'},
+  fira:      {label:'Fira Code',      css:'"Fira Code",ui-monospace,monospace', size:'14.5px'},
+  space:     {label:'Space Mono',     css:'"Space Mono",ui-monospace,monospace', size:'14.5px'},
+  ubuntu:    {label:'Ubuntu Mono',    css:'"Ubuntu Mono",ui-monospace,monospace', size:'16px'},
+  vt323:     {label:'VT323 (retro)',  css:'"VT323",ui-monospace,monospace', size:'19px'}
+};
+
+let curTheme='amber', curFont='plex';
+
+function applyTheme(key){
+  const t=THEMES[key]; if(!t) return false;
+  curTheme=key;
+  const r=document.documentElement.style;
+  r.setProperty('--bg',t.bg); r.setProperty('--bg-glow',t.glow);
+  r.setProperty('--fg',t.fg); r.setProperty('--bright',t.bright);
+  r.setProperty('--dim',t.dim); r.setProperty('--faint',t.faint);
+  r.setProperty('--accent',t.accent); r.setProperty('--accent-dim',t.accentDim);
+  r.setProperty('--red',t.red); r.setProperty('--green',t.green);
+  r.setProperty('--sel',t.sel);
+  r.setProperty('--glow-a', t.light? '0' : '.28');
+  document.body.classList.toggle('light', t.light);
+  document.querySelectorAll('.swatch[data-theme]').forEach(b=>b.classList.toggle('active',b.dataset.theme===key));
+  return true;
+}
+function applyFont(key){
+  const f=FONTS[key]; if(!f) return false;
+  curFont=key;
+  document.documentElement.style.setProperty('--font',f.css);
+  document.documentElement.style.setProperty('--fsize',f.size);
+  document.querySelectorAll('.swatch[data-font]').forEach(b=>b.classList.toggle('active',b.dataset.font===key));
+  return true;
+}
+
+/* ---------------- helpers ---------------- */
+
+const LINKS = {
+  ghUser:  'https://github.com/milodule3-debug',
+  pulse:   'https://github.com/milodule3-debug/aura-pulse',
+  npmCode: 'https://www.npmjs.com/package/aura-code',
+  npmPulse:'https://www.npmjs.com/package/aura-pulse',
+  site:    'https://lean-progress-iq.vercel.app',
+  mail1:   'leanproiq@gmail.com',
+  mail2:   'milodule3@gmail.com'
+};
+
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const A = (url,label) => `<a href="${url}" target="_blank" rel="noopener">${label||url.replace(/^https?:\/\//,'')}</a>`;
+const C = cmd => `<button class="cmd-link" data-cmd="${cmd}">${cmd}</button>`;
+
+function print(html, cls){
+  const div=document.createElement('div');
+  div.className='line '+(cls||'out');
+  div.innerHTML=html;
+  screen.appendChild(div);
+}
+function echoPrompt(cmd){ print(`<span class="ps1">${PS1}</span><span class="typed">${esc(cmd)}</span>`); }
+function scrollDown(){ screen.scrollTop=screen.scrollHeight; }
+
+/* ---------------- content ---------------- */
+
+const BANNER =
+`  ▄▀█ █░█ █▀█ ▄▀█   █▀ █░█ █▀▀ █░░ █░░
+  █▀█ █▄█ █▀▄ █▀█   ▄█ █▀█ ██▄ █▄▄ █▄▄`;
+
+const PROJECTS = {
+  'aura-code': () => [
+    `<div class="box"><span class="bright">◆ aura-code</span> <span class="dim">— autonomous AI coding agent</span> <span class="ok">[FLAGSHIP]</span>
+
+  <span class="dim">status</span>     published to npm · MIT licensed · 2024 – present
+  <span class="dim">tests</span>      <span class="bright">1,031 passing</span> across 65 files · 17 CodeQL alerts resolved — clean scan
+  <span class="dim">providers</span>  Anthropic · OpenAI · Google Gemini · Xiaomi MiMo · Ollama <span class="faint">(seamless switching)</span>
+  <span class="dim">tools</span>      25+ integrated — file I/O, shell, browser, web search, email,
+             Telegram, calendar, MCP
+  <span class="dim">agents</span>     multi-agent orchestration: task routing, specialist delegation,
+             plan decomposition, human-in-the-loop confirmation
+  <span class="dim">stack</span>      TypeScript · Node.js · Express · WebSocket · Puppeteer · Vitest · GitHub Actions
+
+  ${A(LINKS.npmCode,'npmjs.com/package/aura-code')}   ${A(LINKS.ghUser,'github.com/milodule3-debug')}</div>`,
+    `<span class="faint it">"I don't try. I verify."</span>`
+  ],
+  'aura-pulse': () => [
+    `<div class="box pulse-box"><span class="cy">◆ aura-pulse</span> <span class="cyd">— system telemetry · AI clipboard vault · hardware benchmarks</span> <span class="cy">[NEW]</span>
+
+  <span class="cyd">what</span>       a native Linux desktop cockpit, Tron-grade. Rust backend samples
+             your hardware at <span class="cy">10 Hz</span> straight from /proc and /sys and guards a
+             SQLite clipboard vault; a zero-framework TypeScript frontend
+             renders it all on hand-built &lt;canvas&gt; charts.
+  <span class="cyd">views</span>      Diagnostics — per-core CPU load/freq/temp, memory, GPU, thermals,
+             power draw, storage, network, top processes
+             Benchmarks — CPU, memory bandwidth, disk + an <span class="cy">LLM performance
+             estimator</span> that projects local-model token speeds
+             Optimization — power profiles, CPU boost, swappiness (via pkexec)
+             The Vault — clipboard history in SQLite with search, pinning +
+             AI enrichment: summarize, OCR, describe, convert to markdown
+             AI Core — OpenAI, Anthropic, Gemini, DeepSeek, MiMo, Ollama,
+             LM Studio. Keys never touch the webview DOM.
+  <span class="cyd">stack</span>      Tauri 2 · Rust · TypeScript + Vite · SQLite <span class="faint">(43% Rust / 42% TS)</span>
+  <span class="cyd">install</span>    npm install -g aura-pulse
+
+  ${A(LINKS.pulse,'github.com/milodule3-debug/aura-pulse')}   ${A(LINKS.npmPulse,'npmjs.com/package/aura-pulse')}</div>`
+  ],
+  'legal-llm': () => [
+    `<div class="box"><span class="bright">◆ serbian-legal-llm</span> <span class="dim">— legal-tech / MLOps fine-tuning pipeline</span>
+
+  End-to-end pipeline: scraped and cleaned <span class="bright">~1,600 public Serbian acts
+  (~11M words)</span> into structured JSONL, then ran supervised fine-tuning
+  on Google Vertex AI (EU) — an evaluation-ready domain model for
+  Serbian legislation.
+
+  <span class="dim">stack</span>      Python · Vertex AI · JSONL data engineering</div>`
+  ],
+  'ris-cycling': () => [
+    `<div class="box"><span class="bright">◆ ris-cycling-club</span> <span class="dim">— co-founder</span>
+
+  Business planning and competition strategy for the Novi Sad
+  cycling community.</div>`
+  ]
+};
+
+const HELP = () => [
+`<span class="bright">AVAILABLE COMMANDS</span>`,
+`  ${C('run aura-code')}     <span class="dim">launch the flagship — autonomous AI coding agent</span>`,
+`  ${C('run aura-pulse')}    <span class="cy">launch the newest project — Tron-grade system cockpit</span>`,
+`  ${C('projects')}          <span class="dim">list everything runnable</span>`,
+`  ${C('whoami')}            <span class="dim">who is behind this terminal</span>`,
+`  ${C('experience')}        <span class="dim">25 years of systems — logistics, SAP, teaching, code</span>`,
+`  ${C('skills')}            <span class="dim">the toolbox</span>`,
+`  ${C('certs')}             <span class="dim">certifications</span>`,
+`  ${C('education')}         <span class="dim">where it started</span>`,
+`  ${C('languages')}         <span class="dim">spoken ones, not programming</span>`,
+`  ${C('contact')}           <span class="dim">get in touch</span>`,
+`  ${C('prefs')}             <span class="dim">10 color themes · 6 fonts — make it yours</span>`,
+`  ${C('theme')} &lt;name&gt;      <span class="dim">switch theme directly · ${C('theme list')}</span>`,
+`  ${C('font')} &lt;name&gt;       <span class="dim">switch font directly · ${C('font list')}</span>`,
+`  ${C('neofetch')}          <span class="dim">profile card</span>`,
+`  ${C('verify')}            <span class="dim">the motto</span>`,
+`  ${C('clear')}             <span class="dim">wipe the screen</span>`,
+`&nbsp;`,
+`<span class="faint">tip: Tab autocompletes · ↑/↓ history · tabs on the top bar are shortcuts</span>`
+];
+
+function prefsPanel(){
+  const themeBtns = Object.entries(THEMES).map(([k,t])=>
+    `<button class="swatch${k===curTheme?' active':''}" data-theme="${k}">
+       <span class="sw"><i style="background:${t.bg}"></i><i style="background:${t.fg}"></i><i style="background:${t.accent}"></i></span>
+       ${t.label}</button>`).join('');
+  const fontBtns = Object.entries(FONTS).map(([k,f])=>
+    `<button class="swatch fontbtn${k===curFont?' active':''}" data-font="${k}" style="font-family:${f.css.replace(/"/g,'&quot;')}">${f.label}</button>`).join('');
+  return [
+`<div class="prefs">
+<h3>◆ PREFERENCES</h3>
+<span class="dim">color theme — pick one of 10:</span>
+<div class="swatches">${themeBtns}</div>
+<span class="dim">font:</span>
+<div class="swatches">${fontBtns}</div>
+<span class="faint">also works as commands: theme dracula · font vt323 · settings apply instantly</span>
+</div>`
+  ];
+}
+
+const COMMANDS = {
+
+  help: HELP, '?': HELP,
+
+  prefs: prefsPanel,
+  preferences: prefsPanel,
+  settings: prefsPanel,
+
+  theme(args){
+    const k=(args[0]||'').toLowerCase();
+    if(!k || k==='list')
+      return [`<span class="bright">themes:</span> `+Object.keys(THEMES).map(n=>C('theme '+n)).join(' · '),
+              `<span class="faint">or open the visual picker: ${C('prefs')}</span>`];
+    if(applyTheme(k)) return [`theme set to <span class="bright">${THEMES[k].label}</span> <span class="ok">✓</span>`];
+    return [`<span class="err">unknown theme: ${esc(k)}</span> — try ${C('theme list')}`];
+  },
+
+  font(args){
+    const k=(args[0]||'').toLowerCase();
+    if(!k || k==='list')
+      return [`<span class="bright">fonts:</span> `+Object.keys(FONTS).map(n=>C('font '+n)).join(' · '),
+              `<span class="faint">or open the visual picker: ${C('prefs')}</span>`];
+    if(applyFont(k)) return [`font set to <span class="bright">${FONTS[k].label}</span> <span class="ok">✓</span>`];
+    return [`<span class="err">unknown font: ${esc(k)}</span> — try ${C('font list')}`];
+  },
+
+  whoami(){ return [
+`<div class="box"><span class="bright">Dušan Milosavljević</span> <span class="dim">· AI builder · Lean practitioner · English educator</span>
+
+  Multidisciplinary professional bridging logistics, education and
+  software development. One thread connects the whole career:
+  <span class="bright">reverse-engineer complex systems, understand their mechanics,
+  and rebuild them in a more efficient form.</span>
+
+  Started with language (Professor of English), moved through
+  operational systems — travel platforms, SAP ERP, logistics, Lean
+  manufacturing — and now applies that same root-cause mindset to
+  software and AI. Creator of <span class="bright">aura-code</span> and <span class="cy">aura-pulse</span>. Google-certified
+  in Generative AI on Vertex AI (MLOps &amp; deployment).
+
+  <span class="dim">location</span>  Da Nang, Vietnam ⇄ Zrenjanin, Serbia
+  <span class="faint it">Not a series of career changes — twenty-five years spent studying
+  and improving different kinds of systems.</span></div>`,
+`try ${C('run aura-code')} or ${C('experience')}`
+  ]; },
+  about(){ return COMMANDS.whoami(); },
+
+  projects(){ return [
+`<span class="bright">~/projects</span> <span class="dim">— 4 entries · run any of them:</span>`,
+`  ${C('run aura-code')}      <span class="dim">autonomous AI coding agent · 1,031 tests · npm · MIT</span>  <span class="ok">[FLAGSHIP]</span>`,
+`  ${C('run aura-pulse')}     <span class="cyd">telemetry + AI vault + benchmarks · Tauri 2 + Rust</span>  <span class="cy">[NEW]</span>`,
+`  ${C('run legal-llm')}      <span class="dim">Serbian legal LLM fine-tuning on Vertex AI</span>`,
+`  ${C('run ris-cycling')}    <span class="dim">cycling club co-founder · Novi Sad</span>`
+  ]; },
+
+  ls(args){
+    if((args[0]||'').replace(/\/$/,'')==='projects') return COMMANDS.projects();
+    return [`<span class="dim">projects/   skills.txt   experience.log   contact.txt</span>`,
+            `<span class="faint">hint: ${C('ls projects')}</span>`];
+  },
+
+  run(args){
+    const name=(args[0]||'').toLowerCase().replace(/^\.\//,'');
+    if(!name) return [`<span class="err">run: missing target.</span> try ${C('run aura-code')} or ${C('run aura-pulse')}`];
+    const key={'aura-code':'aura-code','auracode':'aura-code','aura':'aura-code','code':'aura-code',
+               'aura-pulse':'aura-pulse','aurapulse':'aura-pulse','pulse':'aura-pulse',
+               'legal-llm':'legal-llm','legal':'legal-llm','llm':'legal-llm',
+               'ris-cycling':'ris-cycling','ris':'ris-cycling','cycling':'ris-cycling'}[name];
+    if(!key) return [`<span class="err">run: '${esc(name)}' not found in ~/projects</span>`,`see ${C('projects')}`];
+    if(key==='aura-pulse') return {boot:[
+      ['<span class="cyd">[pulse]</span> initializing cockpit…',120],
+      ['<span class="cyd">[pulse]</span> rust backend online — sampling /proc at 10 Hz <span class="ok">✓</span>',260],
+      ['<span class="cyd">[pulse]</span> vault unlocked · canvas renderer ready <span class="ok">✓</span>',240]
+    ], lines:PROJECTS[key]()};
+    if(key==='aura-code') return {boot:[
+      ['<span class="dim">[aura]</span> agent loop starting…',120],
+      ['<span class="dim">[aura]</span> 5 LLM providers linked · 25+ tools registered <span class="ok">✓</span>',260],
+      ['<span class="dim">[aura]</span> 1,031 / 1,031 tests passing <span class="ok">✓</span>',240]
+    ], lines:PROJECTS[key]()};
+    return PROJECTS[key]();
+  },
+
+  experience(){ return [
+`<span class="bright">EXPERIENCE</span> <span class="dim">— reverse-chronological</span>`,
+`<div class="box">  <span class="bright">2024 – now</span>   Creator &amp; Lead Developer — aura-code <span class="dim">· Lean Progress IQ</span>
+               <span class="dim">full agent loop, multi-agent orchestration, 5 LLM providers,
+               25+ tools, 1,031 tests, published to npm (MIT)</span>
+
+  <span class="bright">2021 – now</span>   Online English Teacher <span class="dim">· Learnlight</span>
+               <span class="dim">tailored B2B English — presentations, negotiations,
+               correspondence · Virtual Coach across 4 formats</span>
+
+  <span class="bright">2015 – now</span>   Online English Teacher <span class="dim">· Bibo Global Opportunity</span>
+
+  <span class="bright">2009 – now</span>   Fitness Trainer &amp; S/C Coach <span class="dim">· Relax Fitness Studio</span>
+               <span class="dim">trains individuals and professional athletes</span>
+
+  <span class="bright">2017</span>         Material &amp; Production Planning Coordinator <span class="dim">· Yazaki Srbija</span>
+               <span class="dim">greenfield logistics implementation · SAP superuser</span>
+
+  <span class="bright">2016</span>         Micro Logistics Coordinator <span class="dim">· DAD Draexlmaier</span>
+               <span class="dim">material flow optimization (Moldova) · E-Kanban (RO/RS)</span>
+
+  <span class="bright">2015 – 16</span>    Supervisor, Logistics <span class="dim">· DAD Draexlmaier, Zrenjanin</span>
+
+  <span class="bright">2001 – 13</span>    IATA Travel Agent <span class="dim">· Milotours, Novi Sad</span>
+               <span class="dim">AMADEUS &amp; Galileo · "Friend of Malaysia" (2005) ·
+               Lufthansa Experts Sales Award (2007)</span></div>`
+  ]; },
+
+  skills(){ return [
+`<span class="bright">CORE SKILLS</span>`,
+`  <span class="bright">software</span>       TypeScript · Node.js · Python · Rust <span class="faint">(aura-pulse)</span> · Shell · Git · CI/CD`,
+`  <span class="bright">ai/automation</span>  LLM integration · multi-agent orchestration · MCP protocol ·
+                 fine-tuning on Vertex AI`,
+`  <span class="bright">sap/erp</span>        SAP ERP superuser · production &amp; logistics planning`,
+`  <span class="bright">lean</span>           PDCA · 5S · waste elimination · process improvement`,
+`  <span class="bright">education</span>      B2B &amp; conversational English · curriculum design`,
+`  <span class="bright">tools</span>          MS Office · AMADEUS · Galileo · GitHub · npm`
+  ]; },
+
+  certs(){ return [
+`<span class="bright">CERTIFICATIONS</span>`,
+`  ◆ Generative AI with Vertex AI: MLOps &amp; Deployment <span class="dim">— Google Cloud Skills Boost (2026)</span>`,
+`  ◆ Elements of AI <span class="dim">— University of Helsinki (2026)</span>`,
+`  ◆ TEFL — 120-hour Advanced Certification`,
+`  ◆ SAP ERP System Superuser`,
+`  ◆ Lean Manufacturing · PDCA · 5S`,
+`  ◆ Fitness Trainer &amp; Nutritionist`
+  ]; },
+
+  education(){ return [
+`<span class="bright">EDUCATION</span>`,
+`  Professor of English Language &amp; Literature <span class="dim">— University of Novi Sad, 2001</span>`,
+`  Languages &amp; Social Sciences <span class="dim">— Jovan Jovanović Zmaj, 1996</span>`
+  ]; },
+
+  languages(){ return [
+`  English   <span class="bright">██████████████░░</span> advanced`,
+`  Serbian   <span class="bright">████████████████</span> native`,
+`  German    <span class="bright">████████░░░░░░░░</span> intermediate`,
+`<span class="faint">(for the other kind, see ${C('skills')})</span>`
+  ]; },
+
+  contact(){ return [
+`<div class="box"><span class="bright">CONTACT</span>
+
+  <span class="dim">email</span>     <a href="mailto:${LINKS.mail1}">${LINKS.mail1}</a> · <a href="mailto:${LINKS.mail2}">${LINKS.mail2}</a>
+  <span class="dim">github</span>    ${A(LINKS.ghUser)}
+  <span class="dim">web</span>       ${A(LINKS.site)}
+  <span class="dim">phone</span>     +84 37 612 5323 <span class="faint">(VN)</span> · +381 63 7692687 <span class="faint">(RS)</span>
+  <span class="dim">location</span>  Da Nang, Vietnam ⇄ Zrenjanin, Serbia</div>`
+  ]; },
+
+  neofetch(){ return [
+`<pre class="ascii">${esc(BANNER)}</pre>`,
+`  <span class="bright">dusan</span>@<span class="bright">lean-progress-iq</span>
+  <span class="dim">──────────────────────</span>
+  <span class="bright">OS</span>        Human 1.0 · Lean-patched
+  <span class="bright">Host</span>      Da Nang, VN / Zrenjanin, RS
+  <span class="bright">Uptime</span>    25 years across systems
+  <span class="bright">Shell</span>     aura-code <span class="faint">(self-built)</span>
+  <span class="bright">Theme</span>     ${THEMES[curTheme].label} · ${FONTS[curFont].label}
+  <span class="bright">Packages</span>  aura-code · <span class="cy">aura-pulse</span> · legal-llm
+  <span class="bright">Kernel</span>    PDCA · 5S · root-cause analysis
+  <span class="bright">Tests</span>     1,031 passing <span class="ok">✓</span>`
+  ]; },
+
+  verify(){ return [
+`<span class="bright it">"I don't try. I verify."</span>`,
+`<span class="faint">— 1,031 tests would agree.</span>`
+  ]; },
+
+  sudo(){ return [`<span class="err">dusan is not in the sudoers file. This incident will be reported… to nobody. He built this shell.</span>`]; },
+  echo(args){ return [esc(args.join(' '))||'&nbsp;']; },
+  date(){ return [new Date().toString()]; },
+  history(){ return history.length? history.map((h,i)=>`  <span class="dim">${String(i+1).padStart(3)}</span>  ${esc(h)}`):['<span class="dim">(empty)</span>']; },
+  clear(){ screen.innerHTML=''; return []; },
+  exit(){ return [`<span class="dim">nice try. this terminal has no exit — only</span> ${C('projects')}<span class="dim">.</span>`]; }
+};
+COMMANDS.cv = () => [`<span class="dim">summary below — full CV on request via</span> ${C('contact')}`, ...COMMANDS.whoami()];
+COMMANDS.socials = COMMANDS.links = COMMANDS.contact;
+COMMANDS.themes = () => COMMANDS.theme([]);
+COMMANDS.fonts = () => COMMANDS.font([]);
+
+/* ---------------- engine ---------------- */
+
+const history=[]; let histIdx=-1; let busy=false;
+const CMD_NAMES=Object.keys(COMMANDS).concat(['run aura-code','run aura-pulse','run legal-llm','ls projects','theme list','font list']);
+
+function typeLines(items,done){
+  let i=0;
+  (function next(){
+    if(i>=items.length){ done&&done(); return; }
+    print(items[i][0]); scrollDown();
+    setTimeout(next, matchMedia('(prefers-reduced-motion: reduce)').matches?0:items[i++][1]);
+  })();
+}
+
+function execute(raw){
+  const cmd=raw.trim();
+  echoPrompt(cmd);
+  if(!cmd){ scrollDown(); return; }
+  history.push(cmd); histIdx=history.length;
+  const parts=cmd.split(/\s+/);
+  const fn=COMMANDS[parts[0].toLowerCase()];
+  if(!fn){ print(`<span class="err">command not found: ${esc(parts[0])}</span> — type ${C('help')}`); scrollDown(); return; }
+  const result=fn(parts.slice(1));
+  if(result&&result.boot){
+    busy=true;
+    typeLines(result.boot,()=>{ result.lines.forEach(l=>print(l)); busy=false; scrollDown(); input.focus(); });
+  } else { (result||[]).forEach(l=>print(l)); }
+  scrollDown();
+}
+
+input.addEventListener('keydown',e=>{
+  if(busy){ e.preventDefault(); return; }
+  if(e.key==='Enter'){ const v=input.value; input.value=''; execute(v); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); if(histIdx>0){histIdx--; input.value=history[histIdx];} }
+  else if(e.key==='ArrowDown'){ e.preventDefault(); if(histIdx<history.length-1){histIdx++; input.value=history[histIdx];} else {histIdx=history.length; input.value='';} }
+  else if(e.key==='Tab'){
+    e.preventDefault();
+    const v=input.value.toLowerCase(); if(!v) return;
+    const m=CMD_NAMES.filter(c=>c.startsWith(v));
+    if(m.length===1) input.value=m[0]+' ';
+    else if(m.length>1){ echoPrompt(input.value); print('<span class="dim">'+m.join('   ')+'</span>'); scrollDown(); }
+  }
+  else if(e.key==='l'&&e.ctrlKey){ e.preventDefault(); COMMANDS.clear(); }
+});
+
+document.addEventListener('click',e=>{
+  const th=e.target.closest('[data-theme]');
+  if(th){ applyTheme(th.dataset.theme); return; }
+  const fo=e.target.closest('[data-font]');
+  if(fo){ applyFont(fo.dataset.font); return; }
+  const t=e.target.closest('[data-cmd]');
+  if(t){ if(!busy){ input.value=''; execute(t.dataset.cmd);} input.focus(); return; }
+  if(e.target.closest('a')) return;
+  if(!window.getSelection().toString()) input.focus();
+});
+
+/* live clock (top-right) */
+const clock=document.getElementById('clock');
+function tick(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  clock.textContent=`Da Nang · VN | ${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+tick(); setInterval(tick,15000);
+
+/* boot sequence */
+const BOOT=[
+  ['<span class="dim">AURA SHELL v2.6 — Lean Progress IQ terminal</span>',140],
+  ['<span class="dim">loading profile: <span class="bright">Dušan Milosavljević</span> … <span class="ok">ok</span></span>',220],
+  ['<span class="dim">mounting ~/projects (4 entries) … <span class="ok">ok</span></span>',200],
+  ['<span class="dim">verifying 1,031 tests … <span class="ok">all passing ✓</span></span>',260],
+  [`<pre class="ascii">${esc(BANNER)}</pre>`,180],
+  ['<span class="bright">AI builder · Lean practitioner · English educator</span> <span class="dim">— Da Nang / Zrenjanin</span>',120],
+  ['&nbsp;',60],
+  [`Welcome. Type ${C('help')}, jump in with ${C('run aura-code')}, try the newest build ${C('run aura-pulse')} — or restyle the whole terminal with ${C('prefs')}.`,0]
+];
+typeLines(BOOT,()=>{ input.focus(); });
+
+})();
+</script>
+</body>
+</html>
